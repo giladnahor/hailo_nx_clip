@@ -16,9 +16,11 @@ def _run_periodic(delay=1):
                 time.sleep(delay)
                 power = target.control.get_power_measurement().average_value
                 temp = target.control.get_chip_temperature().ts0_temperature
-                print('[{}] {:.3f}W {:.3f}C'.format(device_infos[i], power, temp), end='\r')
+                print('[{}] {:.3f}W {:.3f}C'.format(device_infos[i], power, temp))
+                if i == len(targets) - 1:  # If this is the last target
+                    print('\033[{}A'.format(len(targets)), end='')  # Move the cursor up
     except KeyboardInterrupt:
-        print('-I- Received keyboard intterupt, exiting')
+        print('-I- Received keyboard interrupt, exiting')
 
     for i, target in enumerate(targets):
         target.control.stop_power_measurement()
