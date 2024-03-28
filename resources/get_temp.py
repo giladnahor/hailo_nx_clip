@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+
+import time
+from hailo_platform import Device
+
+def _run_periodic(delay=1):
+    device_infos = Device.scan()
+    targets = [Device(di) for di in device_infos]
+    for i, target in enumerate(targets):
+        target.control.stop_power_measurement()
+        target.control.set_power_measurement()
+        target.control.start_power_measurement()
+    try:
+        while True:
+            for i, target in enumerate(targets):
+                time.sleep(delay)
+                power = target.control.get_power_measurement().average_value
+                temp = target.control.get_chip_temperature().ts0_temperature
+                print('[{}] {:.3f}W {:.3f}C'.format(device_infos[i], power, temp), end='\r')
+    except KeyboardInterrupt:
+        print('-I- Received keyboard intterupt, exiting')
+
+    for i, target in enumerate(targets):
+        target.control.stop_power_measurement()
+
+if __name__ == "__main__":
+    _run_periodic()
