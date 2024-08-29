@@ -62,6 +62,15 @@ public:
     std::string user_data = "";
     std::string text_prefix = "A photo of a ";
 
+public:
+    bool prompt_upadte = false;
+    void set_prompt_update(bool update) {
+        prompt_upadte = update;
+    }
+    bool get_prompt_update() {
+        return prompt_upadte;
+    }
+
 private:
     // Singleton instance
     static TextImageMatcher* instance;

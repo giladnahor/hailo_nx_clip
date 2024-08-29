@@ -322,6 +322,7 @@ nx::sdk::Result<const nx::sdk::ISettingsResponse*> DeviceAgent::settingsReceived
     std::string command = "text_image_matcher --texts-list " + textSettingsString + " --output " + m_pluginHomeDir.string() + "/resources/nx_text_embedding.json";
 
     std::thread t([command, detectionThreshold, debug, this] {
+        this->m_objectDetector->m_textImageMatcher->set_prompt_update(true);
         std::cout << "run text embedding....." << std::endl;
         std::cout << "command: " << command << std::endl;
         auto ret = std::system(command.c_str());
@@ -330,6 +331,7 @@ nx::sdk::Result<const nx::sdk::ISettingsResponse*> DeviceAgent::settingsReceived
             this->m_objectDetector->m_textImageMatcher->load_embeddings(m_pluginHomeDir.string() + "/resources/nx_text_embedding.json");
             this->m_objectDetector->m_textImageMatcher->set_threshold(detectionThreshold);
             this->m_objectDetector->m_textImageMatcher->set_debug(debug);
+            this->m_objectDetector->m_textImageMatcher->set_prompt_update(false);
         } else {
             std::cerr << "Error: m_objectDetector or m_textImageMatcher is null." << std::endl;
         }

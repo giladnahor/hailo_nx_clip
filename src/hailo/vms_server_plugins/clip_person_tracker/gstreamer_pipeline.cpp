@@ -247,7 +247,7 @@ void GStreamerObjectDetector::runPipeline() {
     "detection_crop. ! queue leaky=no max-size-buffers=20 max-size-bytes=0 max-size-time=0 silent=true name=detection_bypass_q ! agg1.sink_0 "
     "detection_crop. ! queue leaky=no max-size-buffers=3 max-size-bytes=0 max-size-time=0 silent=true name=pre_detecion_net ! "
     "video/x-raw, pixel-aspect-ratio=1/1 ! "
-    "hailonet2 hef-path=" + hef_path + " batch-size=8 vdevice-group-id=" + detection_vdevice + " "
+    "hailonet hef-path=" + hef_path + " batch-size=8 vdevice-group-id=" + detection_vdevice + " "
     "multi-process-service=false scheduler-timeout-ms=100 scheduler-priority=31 ! "
     "queue leaky=no max-size-buffers=3 max-size-bytes=0 max-size-time=0 name=pre_detecion_post ! "
     "hailofilter so-path=" +  post_so_path + " qos=false function_name=yolov5_personface_letterbox config-path=" + config_path + " ! "
@@ -261,7 +261,7 @@ void GStreamerObjectDetector::runPipeline() {
     "hailoaggregator name=agg cropper. ! "
     "queue leaky=no max-size-buffers=20 max-size-bytes=0 max-size-time=0 name=clip_bypass_q ! "
     "agg.sink_0 cropper. ! queue leaky=no max-size-buffers=3 max-size-bytes=0 max-size-time=0 name=pre_clip_net ! "
-    "hailonet2 hef-path=" + clip_hef_path + " vdevice-group-id=" + clip_vdevice + " multi-process-service=false batch-size=8 scheduler-timeout-ms=1000 ! "
+    "hailonet hef-path=" + clip_hef_path + " vdevice-group-id=" + clip_vdevice + " multi-process-service=false batch-size=8 scheduler-timeout-ms=1000 ! "
     "queue leaky=no max-size-buffers=3 max-size-bytes=0 max-size-time=0 ! "
     "hailofilter name=clip_post so-path=" + clip_post_so_path + " qos=false ! "
     "queue leaky=no max-size-buffers=3 max-size-bytes=0 max-size-time=0 ! agg.sink_1 agg. ! "
@@ -338,6 +338,7 @@ void GStreamerObjectDetector::on_handoff_clip(GstElement* object, GstBuffer* buf
     {
         return;
     }
+
     // Get Hailo ROI from buffer
     HailoROIPtr roi;
     roi = get_hailo_main_roi(buffer, false);
@@ -431,13 +432,21 @@ void GStreamerObjectDetector::on_handoff_clip(GstElement* object, GstBuffer* buf
         std::vector<HailoClassificationPtr> classifications = hailo_common::get_hailo_classifications(detection);
         std::string clip_text = "";
         float clip_confidence = 0.0;
+        bool prompt_upadte = detector->m_textImageMatcher->get_prompt_update();
         for (auto classification : classifications)
         {
             if (classification->get_classification_type() == "clip")
             {
+                if (prompt_upadte)
+                {
+                    detection->remove_object(classification);
+                }
+                else
+                {
                 clip_text = classification->get_label();
                 clip_confidence = classification->get_confidence();
                 // std::cout << clip_text << " " << clip_confidence << std::endl;
+                }
             }
         }
         // convert hailo detection to nx detection
@@ -486,7 +495,9 @@ void GStreamerObjectDetector::pushFrameToPipeline(const Frame& frame) {
     const cv::Mat image = frame.cvMat;
     if (frame.width != 1280 || frame.height != 720) {
         // throw ObjectDetectionError("Frame size is not 1280x720");
-        NX_PRINT << "Frame size is not 1280x720";
+        NX_PRINT << "Frame size is not 1280x720 width: " << frame.width << " height: " << frame.height << std::endl;
+        std::cout << "Frame size is not 1280x720 width: " << frame.width << " height: " << frame.height << std::endl;
+        return;
     }
     
     // convert cv::Mat to GstBuffer
